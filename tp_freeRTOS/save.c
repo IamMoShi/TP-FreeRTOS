@@ -77,10 +77,12 @@
 // int RX_BUF_SIZE = 1024;
 // int TXD_PIN = 17;
 // int RXD_PIN = 16;
-// int rxBytes; int txBytes;
-// int data[9] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
+// int rxBytes; 
+// int txBytes;
+// uint8_t data[9] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
 // int len = 9;
 // uint8_t DataRX[9];
+// int co2;
 
 // /*-------------------------------------------CO_SENSOR--------------------------------------------*/
 
@@ -110,6 +112,10 @@
 //         //uint8_t* datar = (uint8_t*) malloc(9); 
 //         rxBytes = uart_read_bytes(UART_NUM_1, DataRX, len, 1000 / portTICK_PERIOD_MS);
 //         printf("Nombre de Bytes lus : %d\n", rxBytes);
+            
+//         co2 = DataRX[2] * 256 + DataRX[3];
+//         printf("%d\n", co2);
+    
 //     }
 
 // }
