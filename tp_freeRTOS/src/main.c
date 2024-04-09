@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #include "ultrasonic.h"
-
+#include "driver/uart.h"
 
 /*---------------------------------------DISTANCE_SENSOR------------------------------------------*/
 /*
@@ -70,9 +70,53 @@ void vget_distance() {
 */
 /*---------------------------------------DISTANCE_SENSOR------------------------------------------*/
 
+/*-------------------------------------------CO_SENSOR--------------------------------------------*/
+
+
+
+int RX_BUF_SIZE = 1024;
+int TXD_PIN = 17;
+int RXD_PIN = 16;
+int rxBytes; 
+int txBytes;
+uint8_t data[9] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
+int len = 9;
+uint8_t DataRX[9];
+int co2;
+
+/*-------------------------------------------CO_SENSOR--------------------------------------------*/
+
 
 void app_main() {
-    printf("Hello world \n");
     //xTaskCreate(vget_distance, "get_distance", configMINIMAL_STACK_SIZE * 3, NULL, 5, NULL);
+
+
+    const uart_config_t uart_config = {
+        .baud_rate = 9600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+    
+    uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_param_config(UART_NUM_1, &uart_config);
+    uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+
+    printf("Byte0 :%x, Byte1: %x, Byte2: %x, Byte3 : %x, Byte4 : %x, Byte5 : %x, Byte6 : %x, Byte7 : %x, Byte8 : %x\n", data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
+
+    while (1) {
+        txBytes = uart_write_bytes(UART_NUM_1, data, len);
+        printf("txBytes = %d\n", txBytes);
+        //uint8_t* datar = (uint8_t*) malloc(9); 
+        rxBytes = uart_read_bytes(UART_NUM_1, DataRX, len, 1000 / portTICK_PERIOD_MS);
+        printf("Nombre de Bytes lus : %d\n", rxBytes);
+            
+        co2 = DataRX[2] * 256 + DataRX[3];
+        printf("%d\n", co2);
+    
+    }
+
 }
 
