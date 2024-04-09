@@ -73,6 +73,6 @@ void vget_distance() {
 
 void app_main() {
     printf("Hello world \n");
-    xTaskCreate(vget_distance, "get_distance", configMINIMAL_STACK_SIZE * 3, NULL, 5, NULL);
+    //xTaskCreate(vget_distance, "get_distance", configMINIMAL_STACK_SIZE * 3, NULL, 5, NULL);
 }
 
