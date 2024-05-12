@@ -72,7 +72,7 @@ void v_initDistance() {
 void v_getDistance() {
     // ---------------------------------------//
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 100;
+    const TickType_t xFrequency = 8;
     xLastWakeTime = xTaskGetTickCount();
     // ---------------------------------------//
 
@@ -253,7 +253,7 @@ void v_initUartEsp() {
 void v_uartEspTask() {
     // ---------------------------------------//
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 100;
+    const TickType_t xFrequency = 10;
     xLastWakeTime = xTaskGetTickCount();
     // ---------------------------------------//
     while (true) {
@@ -264,13 +264,6 @@ void v_uartEspTask() {
         // ---------------------------------------//
         data_2[0] = (uint8_t)((int) round(distance) & 0xFF); // octet de poids faible
         data_2[1] = (uint8_t)(((int) round(distance) >> 8) & 0xFF); // octet de poids fort
-
-        printf("Data 0\n");
-        affchage_binaire(data_2[0]);
-        printf("Data 1\n");
-        affchage_binaire(data_2[1]);
-        printf("distance\n");
-        affchage_binaire((int) distance);
 
         data_2[2] = co2_1;
         data_2[3] = co2_2;

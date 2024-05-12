@@ -3,6 +3,8 @@
 #include"driver/uart.h"
 #include<Ticker.h>
 #include"DHTesp.h"
+#include <Wire.h>
+#include <SSD1306Wire.h>
 
 /* //////////////////////////////////////////////////////////////////// */
 /* ----------------------- TEMPERATURE-HUMIDITY ----------------------- */
@@ -47,6 +49,8 @@ void v_initTemp() {
 			5,                              /* Priority of the task */
 			&tempTaskHandle,                /* Task handle. */
 			1);                             /* Core where the task should run */
+    
+  Serial.println("Temperature and humidity initialized");
 }
 
 // ───────────────────────────────────────────────────────────────────  //
@@ -122,6 +126,8 @@ uint8_t data_RS232[4] = {0, 0, 0, 0};
 
 uint16_t detection; 
 int co2; 
+unsigned long derniereDetection = 0;
+uint16_t seuil_detection        = 50; // L'affichage se déclanchera lorsque la detection est inférieure à 50cm
 
 SemaphoreHandle_t xDetection; 
 SemaphoreHandle_t xCo2;
@@ -168,7 +174,7 @@ void v_initUart() {
 void v_uartTask(void *pvParameters) {
   // ---------------------------------------//
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 20;
+    const TickType_t xFrequency = 8;
     xLastWakeTime = xTaskGetTickCount();
   // ---------------------------------------//
 
@@ -181,7 +187,12 @@ void v_uartTask(void *pvParameters) {
     rxBytes = uart_read_bytes(UART_NUM_1, DataRX_RS232, LEN_RS232, 1000 / portTICK_PERIOD_MS);
     if (rxBytes > 0) {
       co2 = DataRX_RS232[2]*256 + DataRX_RS232[3];
-      detection = ((int)data_RS232[1] << 8) | data_RS232[0];
+      detection = ((int)DataRX_RS232[1] << 8) | DataRX_RS232[0];
+
+      if (detection < seuil_detection) {
+        derniereDetection = millis();
+      }
+
     }
 
     // ---------------------------------------//
@@ -209,18 +220,6 @@ void v_printingTask(void *pvParameters);
 // ───────────────────────────────────────────────────────────────────  //
 
 void v_initPrinting() {
-  // ---------------------------------------//
-  xTemperature = xSemaphoreCreateBinary(); 
-  xHumidity    = xSemaphoreCreateBinary();
-  xDetection   = xSemaphoreCreateBinary();
-  xCo2         = xSemaphoreCreateBinary();
-
-  xSemaphoreGive(xTemperature);
-  xSemaphoreGive(xHumidity);
-  xSemaphoreGive(xDetection);
-  xSemaphoreGive(xCo2);
-  // ---------------------------------------//
-
   xTaskCreatePinnedToCore(
 			v_printingTask,                 /* Function to implement the task */
 			"printingTask",                 /* Name of the task */
@@ -239,7 +238,7 @@ void v_initPrinting() {
 void v_printingTask(void *pvParameters) {
   // ---------------------------------------//
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 5000;
+    const TickType_t xFrequency = 500;
     xLastWakeTime = xTaskGetTickCount();
   // ---------------------------------------//
 
@@ -253,7 +252,13 @@ void v_printingTask(void *pvParameters) {
     xSemaphoreTake(xCo2, portMAX_DELAY);
     // ---------------------------------------//
 
-    printf("CO2 : %d; detection : %d; temp : %d; hum : %d\n", co2, detection, temperature, humidity);
+    if (millis() - derniereDetection < 10000) {
+      if (derniereDetection != 0) {
+      printf("CO2 : %d; detection : %d; temp : %d; hum : %d\n", co2, detection, temperature, humidity);
+      } else {
+        derniereDetection == 0;
+      }
+    }
     
     // ---------------------------------------//
     xSemaphoreGive(xTemperature);
@@ -270,6 +275,89 @@ void v_printingTask(void *pvParameters) {
 /* ----------------------- END-PRINTING-DATA ----------------------- */
 /* ///////////////////////////////////////////////////////////////// */
 
+/* ///////////////////////////////////////////////////////////// */
+/* ----------------------- DISPLAY-DATA ------------------------ */
+/* ///////////////////////////////////////////////////////////// */
+
+// ───────────────────────────────────────────────────────────────────  //
+
+void v_initDisplay();
+void v_displayTask(void *pvParameters);
+
+SSD1306Wire display(0x3c, SDA, SCL);
+
+// ───────────────────────────────────────────────────────────────────  //
+
+void v_initDisplay() {
+  delay(1000);
+  Serial.begin(115200);
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
+
+  xTaskCreatePinnedToCore(
+			v_displayTask,                  /* Function to implement the task */
+			"printingTask",                 /* Name of the task */
+			4000,                           /* Stack size in words */
+			NULL,                           /* Task input parameter */
+			2,                              /* Priority of the task */
+			&uartTaskHandle,                /* Task handle. */
+			0);                             /* Core where the task should run */
+
+
+  Serial.println("Display initiated");
+}
+
+// ───────────────────────────────────────────────────────────────────  //
+
+void v_displayTask(void *pvParameters) {
+  // ---------------------------------------//
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = 500;
+    xLastWakeTime = xTaskGetTickCount();
+  // ---------------------------------------//
+
+  while (true) {
+    // ---------------------------------------//
+    xTaskDelayUntil( &xLastWakeTime, xFrequency );
+
+    xSemaphoreTake(xTemperature, portMAX_DELAY);
+    xSemaphoreTake(xHumidity, portMAX_DELAY);
+    xSemaphoreTake(xDetection, portMAX_DELAY);
+    xSemaphoreTake(xCo2, portMAX_DELAY);
+    // ---------------------------------------//
+
+    if (millis() - derniereDetection < 10000) {
+      if (derniereDetection != 0) {
+        display.clear();  
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.drawString(0, 0, "CO2: " + String(co2));
+        display.drawString(0, 12, "Temperature: " + String(temperature) + "°C");
+        display.drawString(0, 24, "Humidity: " + String(humidity) + "%");
+        display.display();      
+      }
+    } else {
+      derniereDetection == 0;
+      display.clear();
+      display.display();
+    }
+
+    // ---------------------------------------//
+    xSemaphoreGive(xTemperature);
+    xSemaphoreGive(xHumidity);
+    xSemaphoreGive(xDetection);
+    xSemaphoreGive(xCo2);
+    // ---------------------------------------//
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────  //
+
+
+/* ///////////////////////////////////////////////////////////////// */
+/* ----------------------- END-DISPLAY-DATA ------------------------ */
+/* ///////////////////////////////////////////////////////////////// */
+
 
 // ───────────────────────────────────────────────────────────────────  //
 // ────────────────────────────SETUP──────────────────────────────────  //
@@ -283,7 +371,10 @@ void setup() {
   // --------------------------------------------
   v_initTemp();
   // --------------------------------------------
-  v_initPrinting();
+  // v_initPrinting();
+  // --------------------------------------------
+  v_initDisplay();
+
 }
 // ───────────────────────────────────────────────────────────────────  //
 // ───────────────────────────────────────────────────────────────────  //
