@@ -6,6 +6,12 @@
         "sdkconfig.h": "c",
         "iterator": "c",
         "math.h": "c",
-        "ultrasonic.h": "c"
+        "ultrasonic.h": "c",
+        "semphr.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c",
+        "freertos.h": "c",
+        "task.h": "c",
+        "producteurconsommateur.h": "c"
     }
 }
